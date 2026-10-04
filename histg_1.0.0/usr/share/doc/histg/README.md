@@ -31,7 +31,7 @@
 ### Manual
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/histg.git
+git clone https://github.com/rox-11/histg.git
 cd histg
 sudo install -m 755 histg /usr/local/bin/histg
 ```
@@ -46,26 +46,12 @@ Make sure `~/.local/bin` is in your `PATH`.
 
 ### Debian / Ubuntu (.deb)
 
-Download the latest `.deb` from the [Releases](https://github.com/YOUR_USERNAME/histg/releases) page:
+Download the latest `.deb` from the [Releases](https://github.com/rox-11/histg/histg_1.0.0.deb) page:
 
 ```bash
 sudo dpkg -i histg_1.1.0_all.deb
 ```
 
-### Arch Linux (AUR)
-
-```bash
-yay -S histg
-```
-
-### Homebrew
-
-```bash
-brew tap YOUR_USERNAME/tap
-brew install histg
-```
-
-> Replace `YOUR_USERNAME` with your GitHub username once the repository and packages are published.
 
 ## Usage
 
@@ -130,15 +116,3 @@ setopt EXTENDED_HISTORY   # store timestamps
 
 **Timestamps in bash:** to get dates in bash results, add `export HISTTIMEFORMAT="%F %T "` to `~/.bashrc`.
 
-## Known limitations
-
-- Fish shell history is not supported yet (different format).
-- Commands that span multiple lines in history are matched line by line.
-
-## Contributing
-
-Issues and pull requests are welcome. If you find a bug or want to add support for another shell, please open an issue first to discuss it.
-
-## License
-
-MIT. See [LICENSE](LICENSE).

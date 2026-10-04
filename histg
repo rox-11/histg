@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+
+# histg - search your shell history
+# Usage: histg [options] PATTERN
+
+set -euo pipefail
+VERSION="1.0.0"
+
+usage() {
+cat <<EOF
+histg $VERSION - search your shell history
+
+Usage: histg [options] PATTERN
+
+Options:
+  -i, --ignore-case   case-insensitive search
+  -n, --limit N       show the last N results (default 20)
+  -a, --all           show all results
+  -p, --plain         print only the commands (good for piping)
+      --no-color      disable colors
+  -f, --file FILE     use a specific history file
+  -h, --help          show this help
+  -v, --version       show version
+
+PATTERN is an extended regular expression.
+EOF
+}
+
+ic=0; limit=20; plain=0; color=1; file=""
+[[ -t 1 ]] || color=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -i|--ignore-case) ic=1 ;;
+    -n|--limit) limit="${2:?missing number}"; shift ;;
+    -a|--all) limit=0 ;;
+    -p|--plain) plain=1; color=0 ;;
+    --no-color) color=0 ;;
+    -f|--file) file="${2:?missing file}"; shift ;;
+    -h|--help) usage; exit 0 ;;
+    -v|--version) echo "histg $VERSION"; exit 0 ;;
+    --) shift; break ;;
+    -*) echo "histg: unknown option $1" >&2; exit 2 ;;
+    *) break ;;
+  esac
+  shift
+done
+
+[[ $# -ge 1 ]] || { usage; exit 1; }
+pattern="$1"
+
+command -v gawk >/dev/null || { echo "histg: gawk is required" >&2; exit 1; }
+#find the history file 
+if [[ -z "$file" ]]; then
+  for f in "${HISTFILE:-}" "$HOME/.zsh_history" "$HOME/.bash_history"; do
+    [[ -n "$f" && -f "$f" ]] && { file="$f"; break; }
+  done
+fi
+[[ -n "$file" && -f "$file" ]] || { echo "histg: no history file found" >&2; exit 1; }
+
+HISTG_PATTERN="$pattern" gawk -v ic="$ic" -v limit="$limit" -v plain="$plain" -v color="$color" '
+function paint(code, s) { return color ? "\033[" code "m" s "\033[0m" : s }
+
+function highlight(s,    out, rest) {
+  out = ""; rest = s
+  while (rest != "" && match(rest, pat) && RLENGTH > 0) {
+    out  = out substr(rest, 1, RSTART - 1) paint("1;31", substr(rest, RSTART, RLENGTH))
+    rest = substr(rest, RSTART + RLENGTH)
+  }
+  return out rest
+}
+
+BEGIN { IGNORECASE = ic; pat = ENVIRON["HISTG_PATTERN"] }
+
+{
+  if (match($0, /^: [0-9]+:[0-9]+;/)) {            # zsh extended format
+    split(substr($0, 3, RLENGTH - 3), a, ":")
+    ts = a[1]; cmd = substr($0, RLENGTH + 1)
+  } else if ($0 ~ /^#[0-9]+$/) {                   # bash timestamp line
+    pending = substr($0, 2); next
+  } else {                                         # plain line
+    cmd = $0; ts = pending; pending = ""
+  }
+  if (cmd ~ pat) { n++; T[n] = ts; C[n] = cmd }
+}
+
+END {
+  # walk backwards: keep the latest occurrence of each command
+  k = 0
+  for (i = n; i >= 1 && (limit == 0 || k < limit); i--)
+    if (!(C[i] in seen)) { seen[C[i]] = 1; R[++k] = i }
+
+  if (k == 0) { print "No match." > "/dev/stderr"; exit 1 }
+
+  for (j = k; j >= 1; j--) {
+    i = R[j]
+    if (plain) { print C[i]; continue }
+    date = (T[i] != "") ? strftime("%Y-%m-%d %H:%M", T[i]) : "----------------"
+    printf "%s  %s  %s\n", paint("2", sprintf("%3d", k - j + 1)), paint("36", date), highlight(C[i])
+  }
+}
+' "$file"

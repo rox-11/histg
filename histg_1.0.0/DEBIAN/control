@@ -1,0 +1,10 @@
+Package: histg
+Version: 1.0.0
+Section: utils
+Priority: optional
+Architecture: all
+Depends: bash, gawk
+Maintainer:  https://github.com/rox-11
+Description: Search your shell history with readable output
+ histg searches zsh and bash history and prints numbered,
+ dated, highlighted results with duplicates removed.
